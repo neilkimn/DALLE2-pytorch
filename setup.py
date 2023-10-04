@@ -40,8 +40,6 @@ setup(
     'pytorch-warmup',
     'resize-right>=0.0.2',
     'rotary-embedding-torch',
-    'torch>=1.10',
-    'torchvision',
     'tqdm',
     'vector-quantize-pytorch',
     'x-clip>=0.4.4',

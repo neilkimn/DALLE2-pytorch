@@ -1,0 +1,12 @@
+name: dalle2
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - mlflow
+      - tensorboardX
+      - psutil
+      - radt
+      - torch --index-url https://download.pytorch.org/whl/cu118
+      - torchvision --index-url https://download.pytorch.org/whl/cu118
+      - torchaudio --index-url https://download.pytorch.org/whl/cu118

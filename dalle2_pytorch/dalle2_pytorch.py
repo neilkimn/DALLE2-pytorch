@@ -1186,6 +1186,7 @@ class DiffusionPrior(nn.Module):
         clip_adapter_overrides = dict()
     ):
         super().__init__()
+        print(f"image embed dim: {image_embed_dim}")
 
         self.sample_timesteps = sample_timesteps
 
@@ -1293,7 +1294,7 @@ class DiffusionPrior(nn.Module):
         if self.init_image_embed_l2norm:
             image_embed = l2norm(image_embed) * self.image_embed_scale
 
-        for i in tqdm(reversed(range(0, self.noise_scheduler.num_timesteps)), desc='sampling loop time step', total=self.noise_scheduler.num_timesteps):
+        for i in tqdm(reversed(range(0, self.noise_scheduler.num_timesteps)), desc='[DiffusionPrior] p_sample_loop_ddpm(): sampling loop time step', total=self.noise_scheduler.num_timesteps):
             times = torch.full((batch,), i, device = device, dtype = torch.long)
 
             self_cond = x_start if self.net.self_cond else None
@@ -1320,7 +1321,7 @@ class DiffusionPrior(nn.Module):
         if self.init_image_embed_l2norm:
             image_embed = l2norm(image_embed) * self.image_embed_scale
 
-        for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
+        for time, time_next in tqdm(time_pairs, desc = '[DiffusionPrior] p_sample_loop_ddim(): sampling loop time step'):
             alpha = alphas[time]
             alpha_next = alphas[time_next]
 
@@ -1422,7 +1423,7 @@ class DiffusionPrior(nn.Module):
 
         img = torch.randn(shape, device = device)
 
-        for i in tqdm(reversed(range(0, self.noise_scheduler.num_timesteps)), desc = 'sampling loop time step', total = self.noise_scheduler.num_timesteps):
+        for i in tqdm(reversed(range(0, self.noise_scheduler.num_timesteps)), desc = '[DiffusionPrior] sample_batch_size(): sampling loop time step', total = self.noise_scheduler.num_timesteps):
             img = self.p_sample(img, torch.full((batch_size,), i, device = device, dtype = torch.long), text_cond = text_cond, cond_scale = cond_scale)
         return img
 
@@ -2866,7 +2867,7 @@ class Decoder(nn.Module):
         if not is_latent_diffusion:
             lowres_cond_img = maybe(self.normalize_img)(lowres_cond_img)
 
-        for time in tqdm(reversed(range(0, noise_scheduler.num_timesteps)), desc = 'sampling loop time step', total = noise_scheduler.num_timesteps):
+        for time in tqdm(reversed(range(0, noise_scheduler.num_timesteps)), desc = '[Decoder] p_sample_loop_ddpm(): sampling loop time step', total = noise_scheduler.num_timesteps):
             is_last_timestep = time == 0
 
             for r in reversed(range(0, resample_times)):
@@ -2956,7 +2957,7 @@ class Decoder(nn.Module):
         if not is_latent_diffusion:
             lowres_cond_img = maybe(self.normalize_img)(lowres_cond_img)
 
-        for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
+        for time, time_next in tqdm(time_pairs, desc = '[Decoder] p_sample_loop_ddim(): sampling loop time step'):
             is_last_timestep = time_next == 0
 
             for r in reversed(range(0, resample_times)):
@@ -3256,6 +3257,7 @@ class Decoder(nn.Module):
         if not exists(image_embed) and not self.unconditional:
             assert exists(self.clip), 'if you want to derive CLIP image embeddings automatically, you must supply `clip` to the decoder on init'
             image_embed, _ = self.clip.embed_image(image)
+            print("image embed", image_embed)
 
         if exists(text) and not exists(text_encodings) and not self.unconditional:
             assert exists(self.clip), 'if you are passing in raw text, you need to supply `clip` to the decoder'

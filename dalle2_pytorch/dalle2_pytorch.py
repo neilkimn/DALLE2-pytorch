@@ -22,7 +22,7 @@ from dalle2_pytorch.tokenizer import tokenizer
 from dalle2_pytorch.vqgan_vae import NullVQGanVAE, VQGanVAE
 
 from resize_right import resize
-
+import time
 # rotary embeddings
 
 from rotary_embedding_torch import RotaryEmbedding
@@ -1206,12 +1206,20 @@ class DiffusionPrior(nn.Module):
 
             assert isinstance(clip, BaseClipAdapter)
             freeze_model_and_make_eval_(clip)
+            print(f"Memory allocated before CLIP: {torch.cuda.memory_allocated(device='cuda:0') / 10**6}")
             self.clip = clip
+            self.clip.to("cuda:0")
+            time.sleep(10)
+            print(f"Memory allocated after CLIP: {torch.cuda.memory_allocated(device='cuda:0') / 10**6}")
         else:
             assert exists(image_embed_dim), 'latent dimension must be given, if training prior network without CLIP given'
             self.clip = None
 
+        print(f"Memory allocated before net: {torch.cuda.memory_allocated(device='cuda:0') / 10**6}")
         self.net = net
+        self.net.to("cuda:0")
+        time.sleep(10)
+        print(f"Memory allocated after net: {torch.cuda.memory_allocated(device='cuda:0') / 10**6}")
         self.image_embed_dim = default(image_embed_dim, lambda: clip.dim_latent)
 
         assert net.dim == self.image_embed_dim, f'your diffusion prior network has a dimension of {net.dim}, but you set your image embedding dimension (keyword image_embed_dim) on DiffusionPrior to {self.image_embed_dim}'

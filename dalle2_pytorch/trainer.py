@@ -202,7 +202,9 @@ class DiffusionPriorTrainer(nn.Module):
         # setting the device
 
         self.device = accelerator.device
+        print(f"Memory allocated before prior: {torch.cuda.memory_allocated(device='cuda:0') / 10**6}")
         diffusion_prior.to(self.device)
+        print(f"Memory allocated after prior: {torch.cuda.memory_allocated(device='cuda:0') / 10**6}")
 
         # save model
 

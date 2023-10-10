@@ -37,8 +37,8 @@
         "batch_size": 128,
         "num_data_points": 1000,
         "eval_every_seconds": 1600,
-        "image_url": "/home/ubuntu/datasets/GCC/cc3m_embeddings/img_emb",
-        "meta_url": "/home/ubuntu/datasets/GCC/cc3m_embeddings/metadata",
+        "image_url": "/raid/datasets/CC3M/embeddings/img_emb",
+        "meta_url": "/raid/datasets/CC3M/embeddings/metadata",
         "splits": {
             "train": 0.8,
             "val":  0.1,

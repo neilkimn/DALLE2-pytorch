@@ -353,6 +353,7 @@ class OpenAIClipAdapter(BaseClipAdapter):
 
     @torch.no_grad()
     def embed_text(self, text):
+        print("embed_text() called!")
         text = text[..., :self.max_text_len]
 
         is_eos_id = (text == self.eos_id)
@@ -369,6 +370,7 @@ class OpenAIClipAdapter(BaseClipAdapter):
 
     @torch.no_grad()
     def embed_image(self, image):
+        print("embed_image() called!")
         assert not self.cleared
         image = self.validate_and_resize_image(image)
         image = self.clip_normalize(image)

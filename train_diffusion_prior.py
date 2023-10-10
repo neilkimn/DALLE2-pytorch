@@ -6,7 +6,6 @@ from typing import List
 from accelerate import Accelerator
 from accelerate.utils import set_seed
 from torch.utils.data import DataLoader
-from embedding_reader import EmbeddingReader
 from accelerate.utils import dataclasses as accelerate_dataclasses
 
 from dalle2_pytorch.utils import Timer
@@ -272,6 +271,7 @@ def report_cosine_sims(
 
         # we are text conditioned, we produce an embedding from the tokenized text
         if text_conditioned:
+            print(f"Generating embedding for: {text_data}")
             text_embedding, text_encodings = trainer.embed_text(text_data)
             text_cond = dict(text_embed=text_embedding, text_encodings=text_encodings)
         else:

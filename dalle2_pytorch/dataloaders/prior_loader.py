@@ -1,8 +1,13 @@
 from math import ceil
+from typing import Optional, Union
+
+import webdataset as wds
 from clip import tokenize
+from clip_retrieval.clip_inference.reader import WebdatasetReader
+from clip_retrieval.load_clip import load_clip
 from embedding_reader import EmbeddingReader
 from torch import from_numpy
-from torch.utils.data import IterableDataset, DataLoader
+from torch.utils.data import DataLoader, IterableDataset
 
 
 class PriorEmbeddingDataset(IterableDataset):
@@ -19,8 +24,9 @@ class PriorEmbeddingDataset(IterableDataset):
         batch_size: int,
         start: int,
         stop: int,
-        image_reader,
+        image_reader: Union[WebdatasetReader, EmbeddingReader],
         text_reader: EmbeddingReader = None,
+        online: bool = False,
     ) -> None:
         super(PriorEmbeddingDataset).__init__()
 
@@ -33,6 +39,7 @@ class PriorEmbeddingDataset(IterableDataset):
         self.start = start
         self.stop = stop
         self.batch_size = batch_size
+        self.online = online
 
     def __len__(self):
         return self.stop - self.start
@@ -47,13 +54,17 @@ class PriorEmbeddingDataset(IterableDataset):
         )
 
         # if the data requested is text conditioned, only load images
-        if self.text_conditioned:
-            self.loader = self.image_reader(**loader_args)
-        # otherwise, include text embeddings and bypass metadata
+        if not self.online:
+            if self.text_conditioned:
+                self.loader = self.image_reader(**loader_args)
+            # otherwise, include text embeddings and bypass metadata
+            else:
+                self.loader = zip(
+                    self.image_reader(**loader_args), self.text_reader(**loader_args)
+                )
         else:
-            self.loader = zip(
-                self.image_reader(**loader_args), self.text_reader(**loader_args)
-            )
+            self.image_reader.slice_dataset(**loader_args)
+            self.loader = iter(self.image_reader)
 
         # return the data loader in its formatted state
         return self
@@ -78,9 +89,15 @@ class PriorEmbeddingDataset(IterableDataset):
 
     def get_sample(self):
         """
-        pre-proocess data from either reader into a common format
+        pre-process data from either reader into a common format
         """
-        if self.text_conditioned:
+        if self.online:
+            out = next(self.loader)
+            image = out["image_tensor"]
+            text = out["text_tokens"]
+            return image, text
+
+        elif self.text_conditioned:
             image_embedding, caption = next(self.loader)
 
             image_embedding = from_numpy(image_embedding)
@@ -168,6 +185,46 @@ def get_reader(
 
     return image_reader, text_reader
 
+def get_reader_online(
+    input_dataset,
+    batch_size: int,
+    num_data_points: int,
+    clip_model: Optional[str] = "ViT-B/32",
+    use_jit: bool = True,
+    num_workers: int = 8,
+    clip_cache_path: Optional[str] = None,
+    cache_path: Optional[str] = None,
+    enable_text: bool = True,
+    enable_image: bool = True,
+    enable_metadata: bool = False,
+    wds_image_key: str = "jpg",
+    wds_caption_key: str = "txt",
+):
+    """
+    Create a WebDatasetReader object.
+    """
+
+    _, preprocess = load_clip(
+            clip_model=clip_model, use_jit=use_jit, warmup_batch_size=batch_size, clip_cache_path=clip_cache_path
+        )
+
+    sampler = None
+
+    reader = WebdatasetReader(
+                sampler,
+                preprocess,
+                input_dataset,
+                batch_size,
+                num_workers,
+                num_data_points,
+                enable_text=enable_text,
+                enable_image=enable_image,
+                enable_metadata=enable_metadata,
+                wds_image_key=wds_image_key,
+                wds_caption_key=wds_caption_key,
+                cache_path=cache_path,
+            )
+    return reader
 
 def make_splits(
     text_conditioned: bool,
@@ -180,6 +237,7 @@ def make_splits(
     start=0,
     rank=0,
     world_size=1,
+    online=False,
 ):
     """
     Split an embedding reader object as needed.
@@ -248,6 +306,7 @@ def make_splits(
         reader_args = dict(
             text_conditioned=text_conditioned,
             image_reader=image_reader,
+            online=online,
         )
 
         train_split_args = dict(**reader_args, **train_split_args)
@@ -257,6 +316,9 @@ def make_splits(
         train = PriorEmbeddingDataset(**train_split_args)
         val = PriorEmbeddingDataset(**eval_split_args)
         test = PriorEmbeddingDataset(**test_split_args)
+
+        if online:
+            return train, val, test
 
     else:
         # add the non-conditioned args to a unified dict

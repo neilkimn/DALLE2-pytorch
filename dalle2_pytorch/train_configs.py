@@ -1,23 +1,19 @@
 import json
-from torchvision import transforms as T
-from pydantic import BaseModel, validator, model_validator
-from typing import List, Optional, Union, Tuple, Dict, Any, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
-from x_clip import CLIP as XCLIP
-from open_clip import list_pretrained
 from coca_pytorch import CoCa
+from open_clip import list_pretrained
+from pydantic import BaseModel, model_validator, validator
+from torchvision import transforms as T
+from x_clip import CLIP as XCLIP
 
-from dalle2_pytorch.dalle2_pytorch import (
-    CoCaAdapter,
-    OpenAIClipAdapter,
-    OpenClipAdapter,
-    Unet,
-    Decoder,
-    DiffusionPrior,
-    DiffusionPriorNetwork,
-    XClipAdapter
-)
-from dalle2_pytorch.trackers import Tracker, create_loader, create_logger, create_saver
+from dalle2_pytorch.dalle2_pytorch import (CoCaAdapter, Decoder,
+                                           DiffusionPrior,
+                                           DiffusionPriorNetwork,
+                                           OpenAIClipAdapter, OpenClipAdapter,
+                                           Unet, XClipAdapter)
+from dalle2_pytorch.trackers import (Tracker, create_loader, create_logger,
+                                     create_saver)
 
 # helper functions
 
@@ -202,10 +198,14 @@ class DiffusionPriorTrainConfig(BaseModel):
     current_epoch: int = 0               # the current epoch
     num_samples_seen: int = 0            # the current number of samples seen
     random_seed: int = 0                 # manual seed for torch
+    shared_loader: int = 0
+    skip_validation: int = 0
+    skip_test: int = 0
 
 class DiffusionPriorDataConfig(BaseModel):
     image_url: str                   # path to embeddings folder
     meta_url: str                    # path to metadata (captions) for images
+    online: bool                     # whether to generate clip embeddings online
     splits: TrainSplitConfig         # define train, validation, test splits for your dataset
     batch_size: int                  # per-gpu batch size used to train the model
     num_data_points: int = 25e7      # total number of datapoints to train on

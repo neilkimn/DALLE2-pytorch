@@ -1,36 +1,34 @@
 import math
 import random
-from tqdm.auto import tqdm
-from functools import partial, wraps
-from contextlib import contextmanager
+import time
 from collections import namedtuple
+from contextlib import contextmanager
+from functools import partial, wraps
 from pathlib import Path
 
+import kornia.augmentation as K
 import torch
 import torch.nn.functional as F
-from torch.utils.checkpoint import checkpoint
-from torch import nn, einsum
 import torchvision.transforms as T
-
-from einops import rearrange, repeat, reduce, pack, unpack
+from coca_pytorch import CoCa
+from einops import pack, rearrange, reduce, repeat, unpack
 from einops.layers.torch import Rearrange
-
 from kornia.filters import gaussian_blur2d
-import kornia.augmentation as K
+from resize_right import resize
+from rotary_embedding_torch import RotaryEmbedding
+from torch import einsum, nn
+from torch.utils.checkpoint import checkpoint
+from tqdm.auto import tqdm
+from x_clip import CLIP
 
 from dalle2_pytorch.tokenizer import tokenizer
 from dalle2_pytorch.vqgan_vae import NullVQGanVAE, VQGanVAE
 
-from resize_right import resize
-import time
 # rotary embeddings
 
-from rotary_embedding_torch import RotaryEmbedding
 
 # use x-clip
 
-from x_clip import CLIP
-from coca_pytorch import CoCa
 
 # constants
 
@@ -353,7 +351,6 @@ class OpenAIClipAdapter(BaseClipAdapter):
 
     @torch.no_grad()
     def embed_text(self, text):
-        print("embed_text() called!")
         text = text[..., :self.max_text_len]
 
         is_eos_id = (text == self.eos_id)
@@ -370,7 +367,6 @@ class OpenAIClipAdapter(BaseClipAdapter):
 
     @torch.no_grad()
     def embed_image(self, image):
-        print("embed_image() called!")
         assert not self.cleared
         image = self.validate_and_resize_image(image)
         image = self.clip_normalize(image)
@@ -1498,7 +1494,7 @@ class DiffusionPrior(nn.Module):
 
         # calculate text conditionings, based on what is passed in
 
-        if exists(text):
+        if exists(text) and self.clip:
             text_embed, text_encodings = self.clip.embed_text(text)
 
         text_cond = dict(text_embed = text_embed)
@@ -3267,7 +3263,6 @@ class Decoder(nn.Module):
         if not exists(image_embed) and not self.unconditional:
             assert exists(self.clip), 'if you want to derive CLIP image embeddings automatically, you must supply `clip` to the decoder on init'
             image_embed, _ = self.clip.embed_image(image)
-            print("image embed", image_embed)
 
         if exists(text) and not exists(text_encodings) and not self.unconditional:
             assert exists(self.clip), 'if you are passing in raw text, you need to supply `clip` to the decoder'

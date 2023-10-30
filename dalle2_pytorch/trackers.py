@@ -1,18 +1,19 @@
-import urllib.request
-import os
 import json
-from pathlib import Path
+import os
 import shutil
+import urllib.request
 from itertools import zip_longest
-from typing import Any, Optional, List, Union
-from pydantic import BaseModel
+from pathlib import Path
+from typing import Any, List, Optional, Union
 
 import torch
-from dalle2_pytorch.dalle2_pytorch import Decoder, DiffusionPrior
-from dalle2_pytorch.utils import import_or_print_error
-from dalle2_pytorch.trainer import DecoderTrainer, DiffusionPriorTrainer
-from dalle2_pytorch.version import __version__
 from packaging import version
+from pydantic import BaseModel
+
+from dalle2_pytorch.dalle2_pytorch import Decoder, DiffusionPrior
+from dalle2_pytorch.trainer import DecoderTrainer, DiffusionPriorTrainer
+from dalle2_pytorch.utils import import_or_print_error
+from dalle2_pytorch.version import __version__
 
 # constants
 
@@ -67,9 +68,13 @@ class BaseLogger:
 class ConsoleLogger(BaseLogger):
     def init(self, full_config: BaseModel, extra_config: dict, **kwargs) -> None:
         print("Logging to console")
+        self.print_interval = 10
+        self.cnt = 0
 
     def log(self, log, **kwargs) -> None:
-        print(log)
+        if self.cnt % self.print_interval == 0:
+            print(log)
+        self.cnt += 1
 
     def log_images(self, images, captions=[], image_section="images", **kwargs) -> None:
         pass

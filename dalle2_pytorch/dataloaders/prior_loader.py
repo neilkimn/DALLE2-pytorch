@@ -283,9 +283,10 @@ def make_splits(
     rank_train_start, rank_train_stop = distribute_to_rank(
         start, train_set_size, rank, world_size
     )
-    rank_eval_start, rank_eval_stop = distribute_to_rank(
-        train_set_size, eval_stop, rank, world_size
-    )
+    if eval_set_size > 0:
+        rank_eval_start, rank_eval_stop = distribute_to_rank(
+            train_set_size, eval_stop, rank, world_size
+        )
     rank_test_start, rank_test_stop = distribute_to_rank(
         eval_stop, num_data_points, rank, world_size
     )
@@ -294,9 +295,10 @@ def make_splits(
     train_split_args = dict(
         start=rank_train_start, stop=rank_train_stop, batch_size=batch_size
     )
-    eval_split_args = dict(
-        start=rank_eval_start, stop=rank_eval_stop, batch_size=batch_size
-    )
+    if eval_set_size:
+        eval_split_args = dict(
+            start=rank_eval_start, stop=rank_eval_stop, batch_size=batch_size
+        )
     test_split_args = dict(
         start=rank_test_start, stop=rank_test_stop, batch_size=batch_size
     )
@@ -310,11 +312,15 @@ def make_splits(
         )
 
         train_split_args = dict(**reader_args, **train_split_args)
-        eval_split_args = dict(**reader_args, **eval_split_args)
+        if eval_set_size:
+            eval_split_args = dict(**reader_args, **eval_split_args)
         test_split_args = dict(**reader_args, **test_split_args)
 
         train = PriorEmbeddingDataset(**train_split_args)
-        val = PriorEmbeddingDataset(**eval_split_args)
+        if eval_set_size:
+            val = PriorEmbeddingDataset(**eval_split_args)
+        else:
+            val = None
         test = PriorEmbeddingDataset(**test_split_args)
 
         if online:
@@ -329,16 +335,21 @@ def make_splits(
         )
 
         train_split_args = dict(**reader_args, **train_split_args)
-        eval_split_args = dict(**reader_args, **eval_split_args)
+        if eval_set_size:
+            eval_split_args = dict(**reader_args, **eval_split_args)
         test_split_args = dict(**reader_args, **test_split_args)
 
         train = PriorEmbeddingDataset(**train_split_args)
-        val = PriorEmbeddingDataset(**eval_split_args)
+        if eval_set_size:
+            val = PriorEmbeddingDataset(**eval_split_args)
         test = PriorEmbeddingDataset(**test_split_args)
 
     # true batch size is specifed in the PriorEmbeddingDataset
     train_loader = DataLoader(train, batch_size=None)
-    eval_loader = DataLoader(val, batch_size=None)
+    if eval_set_size:
+        eval_loader = DataLoader(val, batch_size=None)
+    else:
+        eval_loader = None
     test_loader = DataLoader(test, batch_size=None)
 
     return train_loader, eval_loader, test_loader
